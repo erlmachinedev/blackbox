@@ -1,0 +1,2 @@
+-module(blackbox).
+-export([]).

@@ -1,0 +1,17 @@
+{application, blackbox,
+ [
+  {description,  "Electronic recording device placed inside a machine"},
+  {vsn,          "0.0.1"},
+  {modules,      []},
+  {registered,   []},
+  {applications, [
+                  kernel, stdlib,
+                  erlbox,
+                  jsx
+                 ]},
+  {env,          []},
+  {mod, {blackbox_app, []}},
+
+  {licenses, ["mit"]},
+  {links, [{"Gitlab", "https://gitlab.com/tradesprocessor/blackbox"}]}
+ ]}.

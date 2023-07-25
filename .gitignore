@@ -1,0 +1,9 @@
+.DS_Store
+.erlang.mk/
+*.beam
+blackbox.d
+deps/
+ebin/
+log/
+logs/
+
