@@ -5,7 +5,7 @@
 -export([start_tcp/1]).
 -export([start_udp/1]).
 
--export([start_link/2]).
+-export([start_link/1, trace/2]).
 
 -export([init/1]).
 -export([handle_batch/2]).
@@ -17,36 +17,38 @@
 %%% API
 
 start_tcp(URI) ->
-    Fun0 = fun () -> Pid = self(), ct:print("~nTCP connect: ~p~n", [URI]),
-                     Pid
-           end,
+    Arg = fun () -> Pid = self(),
 
-    Fun1 = fun (Pid) -> ct:print("~nTCP send: ~p~n", [Pid]) end,
+                    Res = fun (Text) -> ct:print("~nTCP send (~p): ~p ~p~n", [Pid, Text, URI])
 
-    blackbox_sup:start_child(Fun0, Fun1).
-
-start_udp(URI) ->
-    Fun0 = fun () -> Pid = self(), ct:print("~nUDP connect: ~p~n", [URI]),
-                     Pid
-           end,
-
-    Fun1 = fun (Pid) -> ct:print("~nUDP send: ~p~n", [Pid]) end,
-
-    blackbox_sup:start_child(Fun0, Fun1).
-
--spec start_link(function(), function()) -> success(pid()).
-start_link(Connect, Send) ->
-    Opt = [],
-
-    Pid = Connect(),
-
-    Fun = fun () -> Res = Send(Pid),
-
-                    Res = ok,
+                          end,
                     Res
           end,
 
+    blackbox_sup:start_child(Arg).
+
+start_udp(URI) ->
+    Arg = fun () -> Pid = self(),
+
+                    Res = fun (Text) -> ct:print("~nUDP send (~p): ~p ~p~n", [Pid, Text, URI])
+
+                          end,
+                    Res
+          end,
+
+    blackbox_sup:start_child(Arg).
+
+-spec start_link(function()) -> success(pid()).
+start_link(Connect) ->
+    Opt = [],
+
+    Fun = Connect(),
+
     gen_batch_server:start_link(_Name = undefined, ?MODULE, Fun, Opt).
+
+-spec trace(pid(), term()) -> success().
+trace(Pid, Event) ->
+    gen_batch_server:cast(Pid, Event).
 
 %% gen_batch_server
 
@@ -85,6 +87,8 @@ send(State, Text) ->
     Res.
 
 %% NOTE https://en.wikipedia.org/wiki/Flight_recorder
+
+%% TODO Implement erl_tracer behaviour
 
 %% TODO Format Fun (the size limit)
 

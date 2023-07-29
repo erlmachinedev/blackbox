@@ -39,12 +39,16 @@ end_per_suite(_) ->
 %%--------------------------------------------------------------------
 
 start_tcp(Config) ->
-    true = is_success(blackbox:start_tcp(_URI = "test:2201")),
+    {ok, Pid} = blackbox:start_tcp(_URI = "test:2201"),
+
+    blackbox:trace(Pid, Config),
 
     ct:log("~n~p: ~p~n", [?FUNCTION_NAME, Config]).
 
 start_udp(Config) ->
-    true = is_success(blackbox:start_udp(_URI = "test:2201")),
+    {ok, Pid} = blackbox:start_udp(_URI = "test:2201"),
+
+    blackbox:trace(Pid, Config),
 
     ct:log("~n~p: ~p~n", [?FUNCTION_NAME, Config]).
 
