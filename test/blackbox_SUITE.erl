@@ -1,12 +1,15 @@
 -module(blackbox_SUITE).
 
+-import(erlbox, [is_success/1]).
+
 -export([suite/0]).
 
 -export([all/0]).
 
 -export([init_per_suite/1, end_per_suite/1]).
 
--export([test/1]).
+-export([start_tcp/1]).
+-export([start_udp/1]).
 
 -include_lib("common_test/include/ct.hrl").
 
@@ -18,8 +21,8 @@ suite() ->
     [].
 
 all() ->
-    [ test
-
+    [ start_tcp,
+      start_udp
     ].
 
 init_per_suite(Config) ->
@@ -35,7 +38,14 @@ end_per_suite(_) ->
 %% TEST CASES
 %%--------------------------------------------------------------------
 
-test(Config) ->
+start_tcp(Config) ->
+    true = is_success(blackbox:start_tcp(_URI = "test:2201")),
+
+    ct:log("~n~p: ~p~n", [?FUNCTION_NAME, Config]).
+
+start_udp(Config) ->
+    true = is_success(blackbox:start_udp(_URI = "test:2201")),
+
     ct:log("~n~p: ~p~n", [?FUNCTION_NAME, Config]).
 
 %%--------------------------------------------------------------------
