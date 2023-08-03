@@ -71,12 +71,8 @@ send(State, Text) ->
 
 %% TODO Implement erl_tracer behaviour
 
-%% TODO Format Fun (the size limit)
-
 %% TODO Match spec (dbg) as a format facility
-
-%% NOTE Provide custom connect Fun
 
 %% TODO Replace with state machine (enabled/3 feature)
 
-%% TODO Intensity control (term size | frequency)
+%% TODO Track the task queue (the bandwidth is responsibility of transport app)

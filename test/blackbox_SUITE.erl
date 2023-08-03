@@ -8,8 +8,7 @@
 
 -export([init_per_suite/1, end_per_suite/1]).
 
--export([start_tcp/1]).
--export([start_udp/1]).
+-export([test/1]).
 
 -include_lib("common_test/include/ct.hrl").
 
@@ -17,13 +16,9 @@
 %% COMMON TEST CALLBACK FUNCTIONS
 %%--------------------------------------------------------------------
 
-suite() ->
-    [].
+suite() -> [].
 
-all() ->
-    [ start_tcp,
-      start_udp
-    ].
+all() -> [test].
 
 init_per_suite(Config) ->
     application:ensure_all_started(blackbox),
@@ -38,37 +33,33 @@ end_per_suite(_) ->
 %% TEST CASES
 %%--------------------------------------------------------------------
 
-start_tcp(Config) ->
-    Fun = fun () -> {ok, Pid} = gen_tcp:connect("127.0.0.1", 5044, [binary]),
+test(Config) ->
+    X0 = fun () -> {ok, Pid} = gen_tcp:connect("127.0.0.1", 5044, [binary]),
 
-                    Res = fun (Text) -> gen_tcp:send(Pid, _Packet = Text),
+                   fun (Text) -> ok = gen_tcp:send(Pid, _Packet = Text)
 
-                                        ct:print("~nTCP send (~p): ~p~n", [Pid, Text])
+                   end
+         end,
 
-                          end,
-                    Res
-          end,
+    X1 = fun () -> {ok, Pid} = gen_udp:open(0, [binary]),
 
-    {ok, Pid} = blackbox:start_child(Fun, fun () -> ok end, []),
+                   fun (Text) -> ok = gen_udp:send(Pid, "127.0.0.1", 5044, _Packet = Text)
 
-    blackbox:trace(Pid, Config),
+                   end
+         end,
 
-    ct:log("~n~p: ~p~n", [?FUNCTION_NAME, Config]).
+    X2 = fun () -> fun (Text) -> ct:print("~n~p~n", [Text]) end
 
-start_udp(Config) ->
-    Fun = fun () -> {ok, Pid} = gen_udp:open(0, [binary]),
+         end,
 
-                    Res = fun (Text) -> ok = gen_udp:send(Pid, "127.0.0.1", 5044, _Packet = Text),
 
-                                        ct:print("~nUDP send (~p): ~p~n", [Pid, Text])
+    [ begin {ok, Pid} = blackbox:start_child(X, fun () -> ok end, []),
 
-                          end,
-                    Res
-          end,
+            Res = blackbox:trace(Pid, Config),
+            Res
 
-    {ok, Pid} = blackbox:start_child(Fun, fun () -> ok end, []),
-
-    blackbox:trace(Pid, Config),
+      end || X <- [X0, X1, X2]
+    ],
 
     ct:log("~n~p: ~p~n", [?FUNCTION_NAME, Config]).
 
