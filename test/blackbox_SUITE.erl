@@ -39,14 +39,34 @@ end_per_suite(_) ->
 %%--------------------------------------------------------------------
 
 start_tcp(Config) ->
-    {ok, Pid} = blackbox:start_tcp(_URI = "test:2201"),
+    Fun = fun () -> {ok, Pid} = gen_tcp:connect("127.0.0.1", 5044, [binary]),
+
+                    Res = fun (Text) -> gen_tcp:send(Pid, _Packet = Text),
+
+                                        ct:print("~nTCP send (~p): ~p~n", [Pid, Text])
+
+                          end,
+                    Res
+          end,
+
+    {ok, Pid} = blackbox:start_child(Fun, fun () -> ok end, []),
 
     blackbox:trace(Pid, Config),
 
     ct:log("~n~p: ~p~n", [?FUNCTION_NAME, Config]).
 
 start_udp(Config) ->
-    {ok, Pid} = blackbox:start_udp(_URI = "test:2201"),
+    Fun = fun () -> {ok, Pid} = gen_udp:open(0, [binary]),
+
+                    Res = fun (Text) -> ok = gen_udp:send(Pid, "127.0.0.1", 5044, _Packet = Text),
+
+                                        ct:print("~nUDP send (~p): ~p~n", [Pid, Text])
+
+                          end,
+                    Res
+          end,
+
+    {ok, Pid} = blackbox:start_child(Fun, fun () -> ok end, []),
 
     blackbox:trace(Pid, Config),
 

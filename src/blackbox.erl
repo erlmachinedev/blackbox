@@ -2,8 +2,7 @@
 
 -import(erlbox, [success/0, success/1, success/2]).
 
--export([start_tcp/1]).
--export([start_udp/1]).
+-export([start_child/3]).
 
 -export([start_link/1, trace/2]).
 
@@ -16,27 +15,9 @@
 
 %%% API
 
-start_tcp(URI) ->
-    Arg = fun () -> Pid = self(),
-
-                    Res = fun (Text) -> ct:print("~nTCP send (~p): ~p ~p~n", [Pid, Text, URI])
-
-                          end,
-                    Res
-          end,
-
-    blackbox_sup:start_child(Arg).
-
-start_udp(URI) ->
-    Arg = fun () -> Pid = self(),
-
-                    Res = fun (Text) -> ct:print("~nUDP send (~p): ~p ~p~n", [Pid, Text, URI])
-
-                          end,
-                    Res
-          end,
-
-    blackbox_sup:start_child(Arg).
+-spec start_child(function(), function(), [term()]) -> success(pid()).
+start_child(Fun, _Match, _Opt) ->
+    blackbox_sup:start_child(Fun).
 
 -spec start_link(function()) -> success(pid()).
 start_link(Connect) ->
@@ -92,4 +73,10 @@ send(State, Text) ->
 
 %% TODO Format Fun (the size limit)
 
-%% TODO Consider usage of match spec as a format facility
+%% TODO Match spec (dbg) as a format facility
+
+%% NOTE Provide custom connect Fun
+
+%% TODO Replace with state machine (enabled/3 feature)
+
+%% TODO Intensity control (term size | frequency)

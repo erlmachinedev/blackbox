@@ -7,7 +7,7 @@
   {applications, [
                   kernel, stdlib,
                   erlbox,
-                  jsx
+                  gen_batch_server
                  ]},
   {env,          []},
   {mod, {blackbox_app, []}},
