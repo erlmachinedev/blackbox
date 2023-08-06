@@ -9,8 +9,8 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-start_child(Arg) ->
-    supervisor:start_child(?MODULE, _List = [Arg]).
+start_child(Fun) ->
+    supervisor:start_child(?MODULE, _List = [Fun]).
 
 init([]) ->
     Mod = blackbox,
