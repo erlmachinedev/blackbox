@@ -2,7 +2,11 @@
 
 -import(erlbox, [success/0, success/1, success/2]).
 
--export([start_child/3, start_link/1]).
+-export([modules/0]).
+
+-export([start_child/3, start_child/4]).
+
+-export([start_link/1]).
 
 -export([init/1]).
 -export([handle_batch/2]).
@@ -22,8 +26,35 @@
 
 %%% API
 
+-spec modules() -> [module()] | [].
+modules() ->
+    case
+        application:get_key(_Key = modules) of {ok, Modules} ->
+            Modules;
+        _ ->
+            []
+    end.
+
+specs(Modules) ->
+    [ begin [ begin [ begin {Mod, Fun, Arity} end || {Fun, Arity} <- Spec
+
+                    ]
+
+              end || {trace, Spec} <- Mod:module_info(attributes)
+
+            ]
+
+      end || Mod <- Modules
+    ].
+
 -spec start_child(function(), function(), [term()]) -> success(pid()).
 start_child(Fun, _Match, _Opt) ->
+    start_child(_Modules = modules(), Fun, _Match, _Opt).
+
+-spec start_child([module()], function(), function(), [term()]) -> success(pid()).
+start_child(Modules, Fun, _Match, _Opt) ->
+    ct:print("~n~p~n", [specs(Modules)]),
+
     blackbox_sup:start_child(Fun).
 
 -spec start_link(function()) -> success(pid()).

@@ -21,13 +21,13 @@ suite() -> [].
 all() -> [test].
 
 init_per_suite(Config) ->
-    application:ensure_all_started(blackbox),
+    bootstrap(),
 
     Res = Config,
     Res.
 
 end_per_suite(_) ->
-    ok.
+    shutdown().
 
 %%--------------------------------------------------------------------
 %% TEST CASES
@@ -40,7 +40,9 @@ test(Config) ->
 
     X2 = blackbox:udp("127.0.0.1", 5044, [binary]),
 
-    [ begin {ok, Pid} = blackbox:start_child(X, fun () -> ok end, []),
+    [ begin Modules = blackbox:modules(),
+
+            {ok, Pid} = blackbox:start_child(Modules, X, fun () -> ok end, []),
 
             Res = blackbox:trace(test, [], Pid, <<"ping">>, []),
             Res
@@ -48,7 +50,7 @@ test(Config) ->
       end || X <- [X0, X1, X2]
     ],
 
-    %% TODO Trace action
+    blackbox_ct:test([]),
 
     ct:log("~n~p: ~p~n", [?FUNCTION_NAME, Config]).
 
@@ -56,3 +58,19 @@ test(Config) ->
 %% FUNCTIONS
 %%--------------------------------------------------------------------
 
+
+bootstrap() ->
+    Mod = blackbox,
+
+    meck:new(Mod, [passthrough, no_link]),
+
+    Fun = modules,
+
+    meck:expect(Mod, Fun, [], [blackbox_ct]),
+
+    application:ensure_all_started(blackbox).
+
+shutdown() ->
+    meck:unload(blackbox),
+
+    application:stop(blackbox).
