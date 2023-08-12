@@ -153,7 +153,6 @@ encode(Opt) ->
     fun (_Msg = {trace, Pid, call, {M, F, Args}}) ->
 
             io_lib:format("~p ~p:~p(~s)~n", [Pid, M, F, io_lib:write(Args, Opt)]);
-
         (_Msg = {trace, Pid, return_from, {M, F, Arity}, Ret}) ->
 
             io_lib:format( "~p ~p:~p/~p -> ~s~n", [Pid, M, F, Arity, io_lib:write(Ret, Opt)]);
