@@ -8,7 +8,7 @@
 
 -export([init_per_suite/1, end_per_suite/1]).
 
--export([test/1]).
+-export([print/1, tcp/1, udp/1]).
 
 -include_lib("common_test/include/ct.hrl").
 
@@ -18,7 +18,7 @@
 
 suite() -> [].
 
-all() -> [test].
+all() -> [print, tcp, udp].
 
 init_per_suite(Config) ->
     bootstrap(),
@@ -33,31 +33,30 @@ end_per_suite(_) ->
 %% TEST CASES
 %%--------------------------------------------------------------------
 
-test(Config) ->
-    X0 = blackbox:tcp("127.0.0.1", 5044, [binary], _Timeout = 5000),
+print(Config) ->
+    Fun = fun () -> fun (Text) -> ct:print("~nText: ~p~n", [Text]) end end,
 
-    X1 = fun () -> fun ct:print/1 end,
+    inspect(Fun),
 
-    X2 = blackbox:udp("127.0.0.1", 5044, [binary]),
+    ct:print("~n~p: ~p~n", [?FUNCTION_NAME, Config]).
 
-    [ begin Modules = blackbox:modules(),
+tcp(Config) ->
+    Fun = blackbox:tcp("127.0.0.1", 5044, [binary], _Timeout = 5000),
 
-            {ok, Pid} = blackbox:start_child(Modules, X, fun () -> ok end, []),
+    inspect(Fun),
 
-            Res = blackbox:trace(test, [], Pid, <<"ping">>, []),
-            Res
+    ct:print("~n~p: ~p~n", [?FUNCTION_NAME, Config]).
 
-      end || X <- [X0, X1, X2]
-    ],
+udp(Config) ->
+    Fun = blackbox:udp("127.0.0.1", 5044, [binary]),
 
-    blackbox_ct:test([]),
+    inspect(Fun),
 
-    ct:log("~n~p: ~p~n", [?FUNCTION_NAME, Config]).
+    ct:print("~n~p: ~p~n", [?FUNCTION_NAME, Config]).
 
 %%--------------------------------------------------------------------
 %% FUNCTIONS
 %%--------------------------------------------------------------------
-
 
 bootstrap() ->
     Mod = blackbox,
@@ -74,3 +73,15 @@ shutdown() ->
     meck:unload(blackbox),
 
     application:stop(blackbox).
+
+inspect(Fun) ->
+    Modules = blackbox:modules(),
+
+    MatchSpec = [{'_', [], [{exception_trace}, {return_trace}]}],
+
+    blackbox:trace(Modules, Fun, MatchSpec, _Encode = blackbox:encode(80)),
+
+    [ begin catch(blackbox_ct:test(X))
+
+      end || X <- lists:seq(1, 10)
+    ].

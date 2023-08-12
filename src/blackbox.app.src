@@ -6,8 +6,7 @@
   {registered,   []},
   {applications, [
                   kernel, stdlib,
-                  erlbox,
-                  gen_batch_server
+                  erlbox
                  ]},
   {env,          []},
   {mod, {blackbox_app, []}},

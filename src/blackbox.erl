@@ -4,18 +4,19 @@
 
 -export([modules/0]).
 
--export([start_child/3, start_child/4]).
+-export([trace/2, trace/3, trace/4]).
 
--export([start_link/1]).
+-export([start_link/2]).
 
 -export([init/1]).
--export([handle_batch/2]).
-
--export([trace/5]).
+-export([handle_call/3, handle_cast/2, handle_info/2]).
+-export([terminate/2]).
 
 -export([tcp/4, udp/3]).
 
--behaviour(gen_batch_server).
+-export([encode/1]).
+
+-behaviour(gen_server).
 
 -include_lib("erlbox/include/erlbox.hrl").
 
@@ -35,83 +36,100 @@ modules() ->
             []
     end.
 
-specs(Modules) ->
-    [ begin [ begin [ begin {Mod, Fun, Arity} end || {Fun, Arity} <- Spec
+-spec trace(function(), function()) -> term().
+trace(Fun, MatchSpec) when is_function(Fun) ->
+    trace(Fun, MatchSpec, _Encode = encode(_Depth = 80)).
+
+
+-spec trace(function(), function(), function()) -> term().
+trace(Fun, MatchSpec, Encode) when is_function(Fun) ->
+    trace(_Modules = modules(), Fun, MatchSpec, Encode).
+
+-spec trace([module()], function(), function(), function()) -> term().
+trace(Modules, Fun, MatchSpec, Encode) when is_function(Fun) ->
+    Ret = blackbox_sup:start_child(Fun, Encode),
+
+    erlbox:is_success(Ret) andalso
+        begin
+            Tracer = element(2, Ret),
+
+            Pid = self(),
+
+            erlang:trace(Pid, true, [set_on_spawn, call, {tracer, Tracer}]),
+
+            [ begin [ begin [ begin erlang:trace_pattern({M, F, A}, MatchSpec, [global])
+
+                              end || {F, A} <- Spec
+
+                            ]
+
+                      end || {trace, Spec} <- M:module_info(attributes)
 
                     ]
 
-              end || {trace, Spec} <- Mod:module_info(attributes)
-
+              end || M <- Modules, code:is_loaded(M) /= false
             ]
 
-      end || Mod <- Modules
-    ].
+        end.
 
--spec start_child(function(), function(), [term()]) -> success(pid()).
-start_child(Fun, _Match, _Opt) ->
-    start_child(_Modules = modules(), Fun, _Match, _Opt).
+-spec start_link(function(), function()) -> success(pid()).
+start_link(Fun, Encode) ->
+    Command = Fun(),
 
--spec start_child([module()], function(), function(), [term()]) -> success(pid()).
-start_child(Modules, Fun, _Match, _Opt) ->
-    ct:print("~n~p~n", [specs(Modules)]),
-
-    blackbox_sup:start_child(Fun).
-
--spec start_link(function()) -> success(pid()).
-start_link(Connect) ->
-    Opt = [],
-
-    Fun = Connect(),
-
-    gen_batch_server:start_link(_Name = undefined, ?MODULE, Fun, Opt).
-
--spec trace(term(), term(), term(), term(), term()) -> success().
-trace(_TraceTag, _TracerState, Tracee, TraceTerm, _Opts) ->
-    gen_batch_server:cast(Tracee, TraceTerm).
+    gen_server:start_link(?MODULE, fun (Msg) -> Command(_Text = Encode(Msg)) end, []).
 
 %% gen_batch_server
 
--record(state, { socket::function() }).
+-record(state, { command::function() }).
 
 -type state() :: #state{}.
 
-init(Fun) ->
+init(Command) ->
     process_flag(trap_exit, true),
 
-    success(_State = state(Fun)).
+    success(_State = state(Command)).
 
-handle_batch(Commands, State) ->
-    ct:print("~n~p(~p, ~p)~n", [?FUNCTION_NAME, Commands, State]),
+handle_call(_Request, _From, State) ->
+    {reply, ignored, State}.
 
-    send(State, _Text = <<"ping">>),
+handle_cast(_Msg, State) ->
+    {noreply, State}.
 
-    success(State).
+handle_info(Msg, State) ->
+    execute(State, Msg),
+
+    {noreply, State}.
+
+terminate(_Reason, _State) ->
+    ok.
 
 %%% State access
 
 -spec state(function()) -> state().
 state(Fun) ->
-    #state{ socket = Fun }.
+    #state{ command = Fun }.
 
--spec socket(state()) -> function().
-socket(State) ->
-    Res = State#state.socket,
+-spec command(state()) -> function().
+command(State) ->
+    Res = State#state.command,
     Res.
 
--spec send(state(), binary()) -> success().
-send(State, Text) ->
-    Fun = socket(State), true = is_function(Fun),
+-spec execute(state(), binary()) -> success().
+execute(State, Text) ->
+    Fun = command(State), true = is_function(Fun),
 
     Res = Fun(Text),
     Res.
 
-%%% Trace constructor API
+%%% Command constructor API
 
 -spec tcp(hostname() | socket_address(), port_number(), [term()], timeout()) -> function().
 tcp(Host, Port, Opts, Timeout) ->
     fun () -> {ok, Pid} = gen_tcp:connect(Host, Port, Opts, Timeout),
 
-              fun (Text) -> Res = gen_tcp:send(Pid, _Packet = Text),
+              fun (Text) -> Packet = Text,
+
+                            Res = gen_tcp:send(Pid, Packet),
 
                             Res = ok,
                             Res
@@ -129,12 +147,24 @@ udp(Host, Port, Opts) ->
               end
     end.
 
-%% NOTE https://en.wikipedia.org/wiki/Flight_recorder
+encode(Opt) ->
+    %% TODO Elaborate the right format
 
-%% TODO Implement erl_tracer behaviour
+    fun (_Msg = {trace, Pid, call, {M, F, Args}}) ->
+
+            io_lib:format("~p ~p:~p(~s)~n", [Pid, M, F, io_lib:write(Args, Opt)]);
+
+        (_Msg = {trace, Pid, return_from, {M, F, Arity}, Ret}) ->
+
+            io_lib:format( "~p ~p:~p/~p -> ~s~n", [Pid, M, F, Arity, io_lib:write(Ret, Opt)]);
+
+        (_Msg = {trace, Pid, exception_from, {M, F, Arity}, {Class, Value}}) ->
+
+            io_lib:format( "~p ~p:~p/~p <- ~p(~s)~n", [Pid, M, F, Arity, Class, io_lib:write(Value, Opt)])
+    end.
+
+%% NOTE https://en.wikipedia.org/wiki/Flight_recorder
 
 %% TODO Match spec (dbg) as a format facility (ms_transform)
 
-%% TODO Replace with state machine (enabled/3 feature)
-
-%% TODO Track the task queue (the bandwidth is responsibility of transport app)
+%% TODO Match spec compilation
