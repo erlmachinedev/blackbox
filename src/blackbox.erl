@@ -36,6 +36,14 @@ modules() ->
             []
     end.
 
+attributes(Mod) ->
+    Info = Mod:module_info(attributes),
+
+    Spec = proplists:get_value(trace, Info, []),
+
+    Res = lists:map(fun ({F, A}) -> {Mod, F, A} end, Spec),
+    Res.
+
 -spec trace(function(), function()) -> term().
 trace(Fun, MatchSpec) when is_function(Fun) ->
     trace(Fun, MatchSpec, _Encode = encode(_Depth = 80)).
@@ -50,27 +58,22 @@ trace(Modules, Fun, MatchSpec, Encode) when is_function(Fun) ->
     Ret = blackbox_sup:start_child(Fun, Encode),
 
     erlbox:is_success(Ret) andalso
-        begin
-            Tracer = element(2, Ret),
 
-            Pid = self(),
+        begin Pid = self(),
 
-            erlang:trace(Pid, true, [set_on_spawn, call, {tracer, Tracer}]),
+              erlang:trace(Pid, true, [set_on_spawn, call, {tracer, _Tracer = element(2, Ret)}]),
 
-            [ begin [ begin [ begin erlang:trace_pattern({M, F, A}, MatchSpec, [global])
+              [ begin [ begin erlang:trace_pattern(MFA, MatchSpec, [global])
 
-                              end || {F, A} <- Spec
+                        end || MFA <- _ = attributes(M)
+                      ]
 
-                            ]
+                end || M <- Modules, code:is_loaded(M) /= false
+              ]
+        end,
 
-                      end || {trace, Spec} <- M:module_info(attributes)
-
-                    ]
-
-              end || M <- Modules, code:is_loaded(M) /= false
-            ]
-
-        end.
+    Res = Ret,
+    Res.
 
 -spec start_link(function(), function()) -> success(pid()).
 start_link(Fun, Encode) ->
