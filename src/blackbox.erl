@@ -4,7 +4,7 @@
 
 -export([modules/0]).
 
--export([trace/2, trace/3, trace/4]).
+-export([trace/1, trace/2, trace/3, trace/4]).
 
 -export([start_link/2]).
 
@@ -19,6 +19,7 @@
 -behaviour(gen_server).
 
 -include_lib("erlbox/include/erlbox.hrl").
+-include_lib("stdlib/include/ms_transform.hrl").
 
 -type hostname() :: inet:hostname().
 
@@ -44,26 +45,28 @@ attributes(Mod) ->
     Res = lists:map(fun ({F, A}) -> {Mod, F, A} end, Spec),
     Res.
 
+-spec trace(function()) -> term().
+trace(Command) ->
+    trace(Command, _Encode = encode(_Depth = 80)).
+
 -spec trace(function(), function()) -> term().
-trace(Fun, MatchSpec) when is_function(Fun) ->
-    trace(Fun, MatchSpec, _Encode = encode(_Depth = 80)).
+trace(Command, Encode) ->
+    trace(Command, Encode, _MatchSpec = []).
 
+-spec trace(function(), function(), [term()]) -> term().
+trace(Command, Encode, MatchSpec) ->
+    trace(_Modules = modules(), Command, Encode, MatchSpec).
 
--spec trace(function(), function(), function()) -> term().
-trace(Fun, MatchSpec, Encode) when is_function(Fun) ->
-    trace(_Modules = modules(), Fun, MatchSpec, Encode).
+-spec trace([module()], function(), function(), [term()]) -> term().
+trace(Modules, Command, Encode, MatchSpec) when is_function(Command) ->
+    Res = blackbox_sup:start_child(Command, Encode),
 
--spec trace([module()], function(), function(), function()) -> term().
-trace(Modules, Fun, MatchSpec, Encode) when is_function(Fun) ->
-    Ret = blackbox_sup:start_child(Fun, Encode),
-
-    erlbox:is_success(Ret) andalso
-
+    erlbox:is_success(Res) andalso
         begin Pid = self(),
 
-              erlang:trace(Pid, true, [set_on_spawn, call, {tracer, _Tracer = element(2, Ret)}]),
+              erlang:trace(Pid, true, [set_on_spawn, call, {tracer, _Tracer = element(2, Res)}]),
 
-              [ begin [ begin erlang:trace_pattern(MFA, MatchSpec, [global])
+              [ begin [ begin erlang:trace_pattern(MFA, MatchSpec, [])
 
                         end || MFA <- _ = attributes(M)
                       ]
@@ -72,14 +75,14 @@ trace(Modules, Fun, MatchSpec, Encode) when is_function(Fun) ->
               ]
         end,
 
-    Res = Ret,
     Res.
 
 -spec start_link(function(), function()) -> success(pid()).
-start_link(Fun, Encode) ->
-    Command = Fun(),
+start_link(Command, Encode) ->
 
-    gen_server:start_link(?MODULE, fun (Msg) -> Command(_Text = Encode(Msg)) end, []).
+    Fun = Command(),
+
+    gen_server:start_link(?MODULE, fun (Msg) -> Fun(_Data = Encode(Msg)) end, []).
 
 %% gen_batch_server
 
@@ -98,8 +101,7 @@ handle_call(_Request, _From, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info(Msg, State) ->
-    execute(State, Msg),
+handle_info(Msg, State) -> execute(State, Msg),
 
     {noreply, State}.
 
@@ -151,22 +153,21 @@ udp(Host, Port, Opts) ->
     end.
 
 encode(Opt) ->
-    %% TODO Elaborate the right format
-
     fun (_Msg = {trace, Pid, call, {M, F, Args}}) ->
 
             io_lib:format("~p ~p:~p(~s)~n", [Pid, M, F, io_lib:write(Args, Opt)]);
         (_Msg = {trace, Pid, return_from, {M, F, Arity}, Ret}) ->
 
-            io_lib:format( "~p ~p:~p/~p -> ~s~n", [Pid, M, F, Arity, io_lib:write(Ret, Opt)]);
+            io_lib:format( "~p ~p:~p/~p ~s~n", [Pid, M, F, Arity, io_lib:write(Ret, Opt)]);
 
         (_Msg = {trace, Pid, exception_from, {M, F, Arity}, {Class, Value}}) ->
 
-            io_lib:format( "~p ~p:~p/~p <- ~p(~s)~n", [Pid, M, F, Arity, Class, io_lib:write(Value, Opt)])
+            io_lib:format( "~p ~p:~p/~p ~p(~s)~n", [Pid, M, F, Arity, Class, io_lib:write(Value, Opt)])
     end.
 
 %% NOTE https://en.wikipedia.org/wiki/Flight_recorder
 
-%% TODO Match spec (dbg) as a format facility (ms_transform)
+%% NOTE https://www.erlang.org/doc/man/ms_transform.html
+%% NOTE https://www.erlang.org/doc/man/dbg#fun2ms-1
+%% NOTE https://www.erlang.org/doc/apps/erts/match_spec.html
 
-%% TODO Match spec compilation

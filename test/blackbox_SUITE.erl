@@ -11,6 +11,7 @@
 -export([print/1, tcp/1, udp/1]).
 
 -include_lib("common_test/include/ct.hrl").
+-include_lib("stdlib/include/ms_transform.hrl").
 
 %%--------------------------------------------------------------------
 %% COMMON TEST CALLBACK FUNCTIONS
@@ -34,23 +35,23 @@ end_per_suite(_) ->
 %%--------------------------------------------------------------------
 
 print(Config) ->
-    Fun = fun () -> fun (Text) -> ct:print("~nText: ~p~n", [Text]) end end,
+    Command = fun () -> fun (Text) -> ct:print("~nText: ~p~n", [Text]) end end,
 
-    inspect(Fun),
+    inspect(Command),
 
     ct:print("~n~p: ~p~n", [?FUNCTION_NAME, Config]).
 
 tcp(Config) ->
-    Fun = blackbox:tcp("127.0.0.1", 5044, [binary], _Timeout = 5000),
+    Command = blackbox:tcp("127.0.0.1", 5044, [binary], _Timeout = 5000),
 
-    inspect(Fun),
+    inspect(Command),
 
     ct:print("~n~p: ~p~n", [?FUNCTION_NAME, Config]).
 
 udp(Config) ->
-    Fun = blackbox:udp("127.0.0.1", 5044, [binary]),
+    Command = blackbox:udp("127.0.0.1", 5044, [binary]),
 
-    inspect(Fun),
+    inspect(Command),
 
     ct:print("~n~p: ~p~n", [?FUNCTION_NAME, Config]).
 
@@ -74,14 +75,27 @@ shutdown() ->
 
     application:stop(blackbox).
 
-inspect(Fun) ->
+inspect(Command) ->
     Modules = blackbox:modules(),
 
-    MatchSpec = [{'_', [], [{exception_trace}, {return_trace}]}],
+    %%MatchSpec = [{'_', [], [{exception_trace}, {return_trace}]}],
 
-    blackbox:trace(Modules, Fun, MatchSpec, _Encode = blackbox:encode(80)),
+    %% MatchSpec = [],
+
+    MatchSpec = dbg:fun2ms(fun(_) -> return_trace(), exception_trace() end),
+
+    %% MatchSpec = dbg:fun2ms(fun([A, B]) -> true end),
+
+    ct:print("~nMatchSpec: ~p~n", [MatchSpec]),
+
+    {ok, Pid} = blackbox:trace(Modules, Command, _Encode = blackbox:encode(80), MatchSpec),
 
     [ begin catch(blackbox_ct:test(X))
 
       end || X <- lists:seq(1, 10)
-    ].
+    ],
+
+    {tracer, Pid} = erlang:trace_info(_Pid = self(), tracer),
+
+    Res = Pid,
+    Res.
