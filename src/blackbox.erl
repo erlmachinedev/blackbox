@@ -153,17 +153,7 @@ udp(Host, Port, Opts) ->
     end.
 
 encode(Opt) ->
-    fun (_Msg = {trace, Pid, call, {M, F, Args}}) ->
-
-            io_lib:format("~p ~p:~p(~s)~n", [Pid, M, F, io_lib:write(Args, Opt)]);
-        (_Msg = {trace, Pid, return_from, {M, F, Arity}, Ret}) ->
-
-            io_lib:format( "~p ~p:~p/~p ~s~n", [Pid, M, F, Arity, io_lib:write(Ret, Opt)]);
-
-        (_Msg = {trace, Pid, exception_from, {M, F, Arity}, {Class, Value}}) ->
-
-            io_lib:format( "~p ~p:~p/~p ~p(~s)~n", [Pid, M, F, Arity, Class, io_lib:write(Value, Opt)])
-    end.
+    fun (Msg) -> io_lib:format("~s~n", [io_lib:write(Msg, Opt)]) end.
 
 %% NOTE https://en.wikipedia.org/wiki/Flight_recorder
 
