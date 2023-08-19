@@ -19,7 +19,6 @@
 -behaviour(gen_server).
 
 -include_lib("erlbox/include/erlbox.hrl").
--include_lib("stdlib/include/ms_transform.hrl").
 
 -type hostname() :: inet:hostname().
 
@@ -153,7 +152,9 @@ udp(Host, Port, Opts) ->
     end.
 
 encode(Opt) ->
-    fun (Msg) -> io_lib:format("~s~n", [io_lib:write(Msg, Opt)]) end.
+    fun (Msg) -> Res = io_lib:format("~s~n", [io_lib:write(Msg, Opt)]),
+                 Res
+    end.
 
 %% NOTE https://en.wikipedia.org/wiki/Flight_recorder
 
@@ -161,3 +162,7 @@ encode(Opt) ->
 %% NOTE https://www.erlang.org/doc/man/dbg#fun2ms-1
 %% NOTE https://www.erlang.org/doc/apps/erts/match_spec.html
 
+%% TODO Rewrite send API using parse transformations (args, return value)
+%% TODO Implement via server cast
+
+%% TODO include blackbox_transform.hrl -compile({parse_transform, blackbox_transform}).

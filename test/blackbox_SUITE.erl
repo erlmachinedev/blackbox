@@ -11,7 +11,7 @@
 -export([print/1, tcp/1, udp/1]).
 
 -include_lib("common_test/include/ct.hrl").
--include_lib("stdlib/include/ms_transform.hrl").
+-include_lib("blackbox/include/blackbox.hrl").
 
 %%--------------------------------------------------------------------
 %% COMMON TEST CALLBACK FUNCTIONS
@@ -78,11 +78,13 @@ shutdown() ->
 inspect(Command) ->
     Modules = blackbox:modules(),
 
+    %% TODO Test with timer:tc/3
+
     %%MatchSpec = [{'_', [], [{exception_trace}, {return_trace}]}],
 
-    %% MatchSpec = [],
+    MatchSpec = [],
 
-    MatchSpec = dbg:fun2ms(fun(_) -> return_trace(), exception_trace() end),
+    %% MatchSpec = dbg:fun2ms(fun(_) -> message(process_dump()) end),
 
     %% MatchSpec = dbg:fun2ms(fun([A, B]) -> true end),
 
