@@ -11,7 +11,6 @@
 -export([print/1, tcp/1, udp/1]).
 
 -include_lib("common_test/include/ct.hrl").
--include_lib("blackbox/include/blackbox.hrl").
 
 %%--------------------------------------------------------------------
 %% COMMON TEST CALLBACK FUNCTIONS

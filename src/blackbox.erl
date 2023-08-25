@@ -61,6 +61,7 @@ trace(Modules, Command, Encode, MatchSpec) when is_function(Command) ->
     Res = blackbox_sup:start_child(Command, Encode),
 
     erlbox:is_success(Res) andalso
+
         begin Pid = self(),
 
               erlang:trace(Pid, true, [set_on_spawn, call, {tracer, _Tracer = element(2, Res)}]),
@@ -165,4 +166,6 @@ encode(Opt) ->
 %% TODO Rewrite send API using parse transformations (args, return value)
 %% TODO Implement via server cast
 
-%% TODO include blackbox_transform.hrl -compile({parse_transform, blackbox_transform}).
+%% TODO Introduce injected Fun as expression which returns the result
+
+%% TODO Elaborate the right error handling (based on lager and ms modules)
