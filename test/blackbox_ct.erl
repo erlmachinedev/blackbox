@@ -1,6 +1,6 @@
 -module(blackbox_ct).
 
--export([test/1, test/2]).
+-export([test/1, test/2, test/3]).
 
 -include_lib("blackbox/include/blackbox_transform.hrl").
 
@@ -20,6 +20,10 @@ test(X) when X == 10 -> throw(?LINE);
 test(X) -> X.
 
 -spec test(term(), term()) -> term().
-test(X, _) when X == 10 -> throw(?LINE);
-test(X, _) -> X.
+test(X, _Y) when X == 10 -> throw(?LINE);
+test(X, _Y) -> X.
+
+-spec test(term(), term(), term()) -> term().
+test(X, _Y, _Z) ->
+    X.
 
