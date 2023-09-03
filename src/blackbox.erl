@@ -16,6 +16,8 @@
 
 -export([encode/1]).
 
+-export([print/4]).
+
 -behaviour(gen_server).
 
 -include_lib("erlbox/include/erlbox.hrl").
@@ -26,6 +28,15 @@
 -type port_number() :: inet:port_number().
 
 %%% API
+
+print(A, B, C, D) ->
+    Data = [ begin Res = io_lib:write(X, []),
+                   Res
+
+             end || X <- [A, B, C, D]
+           ],
+
+    ct:print("~n~s ~s ~s ~s~n", Data).
 
 -spec modules() -> [module()] | [].
 modules() ->

@@ -91,7 +91,8 @@ inspect(Command) ->
 
     {ok, Pid} = blackbox:trace(Modules, Command, _Encode = blackbox:encode(80), MatchSpec),
 
-    [ begin catch(blackbox_ct:test(X))
+    [ begin catch(blackbox_ct:test(X)),
+            catch(blackbox_ct:test(X, X))
 
       end || X <- lists:seq(1, 10)
     ],

@@ -16,8 +16,9 @@
 -trace([]).
 
 -spec test(term()) -> term().
-test(X) when X == 10 -> throw(?LINE);
-test(X) -> X.
+test(X) when X == 10 -> begin io:format("~n~p~n", [X]) end, throw(?LINE);
+test(X) -> io:format("~n~p~n", [X]), {X, _} = {X, 1}.
+
 
 -spec test(term(), term()) -> term().
 test(X, _Y) when X == 10 -> throw(?LINE);
