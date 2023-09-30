@@ -36,23 +36,17 @@ end_per_suite(_) ->
 print(Config) ->
     Command = fun () -> fun (Text) -> ct:print("~nText: ~p~n", [Text]) end end,
 
-    inspect(Command),
-
-    ct:print("~n~p: ~p~n", [?FUNCTION_NAME, Config]).
+    inspect(Command).
 
 tcp(Config) ->
     Command = blackbox:tcp("127.0.0.1", 5044, [binary], _Timeout = 5000),
 
-    inspect(Command),
-
-    ct:print("~n~p: ~p~n", [?FUNCTION_NAME, Config]).
+    inspect(Command).
 
 udp(Config) ->
     Command = blackbox:udp("127.0.0.1", 5044, [binary]),
 
-    inspect(Command),
-
-    ct:print("~n~p: ~p~n", [?FUNCTION_NAME, Config]).
+    inspect(Command).
 
 %%--------------------------------------------------------------------
 %% FUNCTIONS
@@ -75,19 +69,7 @@ shutdown() ->
     application:stop(blackbox).
 
 inspect(Command) ->
-    Modules = blackbox:modules(),
-
     %% TODO Test with timer:tc/3
-
-    %%MatchSpec = [{'_', [], [{exception_trace}, {return_trace}]}],
-
-    MatchSpec = [],
-
-    %% MatchSpec = dbg:fun2ms(fun(_) -> message(process_dump()) end),
-
-    %% MatchSpec = dbg:fun2ms(fun([A, B]) -> true end),
-
-    ct:print("~nMatchSpec: ~p~n", [MatchSpec]),
 
     {ok, Pid} = blackbox:trace(Modules, Command, _Encode = blackbox:encode(80), MatchSpec),
 
@@ -96,8 +78,6 @@ inspect(Command) ->
 
       end || X <- lists:seq(1, 10)
     ],
-
-    {tracer, Pid} = erlang:trace_info(_Pid = self(), tracer),
 
     Res = Pid,
     Res.

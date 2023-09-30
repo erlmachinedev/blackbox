@@ -29,63 +29,30 @@
 
 %%% API
 
-print(A, B, C, D) ->
+%% TODO Implement register API
+%% TODO start_tcp/1, start_udp/1
+
+%% TODO Introduce syn dependency (blackbox scope)
+
+trace(A, B, C, D) ->
     Data = [ begin Res = io_lib:write(X, []),
                    Res
 
              end || X <- [A, B, C, D]
            ],
 
-    ct:print("~n~s ~s ~s ~s~n", Data).
+    ct:print("~n~s ~s ~s ~s~n", Data),
 
--spec modules() -> [module()] | [].
-modules() ->
-    case
-        application:get_key(_Key = modules) of {ok, Modules} ->
-            Modules;
-        _ ->
-            []
-    end.
-
-attributes(Mod) ->
-    Info = Mod:module_info(attributes),
-
-    Spec = proplists:get_value(trace, Info, []),
-
-    Res = lists:map(fun ({F, A}) -> {Mod, F, A} end, Spec),
+    Res = D,
     Res.
 
--spec trace(function()) -> term().
-trace(Command) ->
-    trace(Command, _Encode = encode(_Depth = 80)).
+-spec start(function()) -> term().
+start(Command) ->
+    start(Command, _Encode = encode(_Depth = 80)).
 
--spec trace(function(), function()) -> term().
-trace(Command, Encode) ->
-    trace(Command, Encode, _MatchSpec = []).
-
--spec trace(function(), function(), [term()]) -> term().
-trace(Command, Encode, MatchSpec) ->
-    trace(_Modules = modules(), Command, Encode, MatchSpec).
-
--spec trace([module()], function(), function(), [term()]) -> term().
-trace(Modules, Command, Encode, MatchSpec) when is_function(Command) ->
-    Res = blackbox_sup:start_child(Command, Encode),
-
-    erlbox:is_success(Res) andalso
-
-        begin Pid = self(),
-
-              erlang:trace(Pid, true, [set_on_spawn, call, {tracer, _Tracer = element(2, Res)}]),
-
-              [ begin [ begin erlang:trace_pattern(MFA, MatchSpec, [])
-
-                        end || MFA <- _ = attributes(M)
-                      ]
-
-                end || M <- Modules, code:is_loaded(M) /= false
-              ]
-        end,
-
+-spec start(function(), function()) -> term().
+start(Command, Encode) when is_function(Command) ->
+    Res = blackbox_sup:start_child(Commanyd, Encode),
     Res.
 
 -spec start_link(function(), function()) -> success(pid()).
