@@ -1,7 +1,6 @@
 -module(blackbox_sup).
 
 -export([start_link/0, start_child/2]).
-
 -export([init/1]).
 
 -behaviour(supervisor).
@@ -13,12 +12,12 @@ start_child(Fun, Encode) ->
     supervisor:start_child(?MODULE, _List = [Fun, Encode]).
 
 init([]) ->
-    Mod = blackbox,
+    M = blackbox,
 
-    Fun = start_link,
-    Arg = [],
+    F = start_link,
+    A = [],
 
-    Procs = [ #{'id' => Mod, start => {Mod, Fun, Arg}} ],
+    Procs = [ #{'id' => M, start => {M, F, A}} ],
 
     Flags = #{ strategy => simple_one_for_one },
 
