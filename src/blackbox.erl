@@ -46,6 +46,11 @@ trace(A, B, C, D) ->
     Res = D,
     Res.
 
+print(Module, Name, Args, Value) ->
+    trace(Module, Name, Args, Value),
+
+    Value.
+
 -spec start(function()) -> term().
 start(Command) ->
     start(Command, _Encode = encode(_Depth = 80)).
