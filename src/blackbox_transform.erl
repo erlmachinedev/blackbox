@@ -20,14 +20,34 @@ parse_transform(Forms, _Opt) ->
 
     Exec = fun(Name, Arg0, Expr) -> Arg1 = erl_syntax:list(Arg0),
 
-                                    Form = erl_syntax:application(ModQ, [Mod1, Name, Arg1, Expr]),
+                                    ResVar = erl_syntax:variable('_BBResult'),
+                                    ClassVar = erl_syntax:variable('_BBClass'),
+                                    ReasonVar = erl_syntax:variable('_BBReason'),
+                                    StackVar = erl_syntax:variable('_BBStack'),
+
+                                    PrintOk = erl_syntax:application(ModQ, [Mod1, Name, Arg1, ResVar]),
+
+                                    PrintErr = erl_syntax:application(ModQ, [Mod1, Name, Arg1,
+                                                                              erl_syntax:tuple([ClassVar,
+                                                                                                ReasonVar,
+                                                                                                StackVar])]),
+
+                                    Raise = erl_syntax:application(_ = erl_syntax:module_qualifier(erl_syntax:atom(erlang),
+                                                                                                   erl_syntax:atom(raise)),
+                                                                   [ClassVar, ReasonVar, StackVar]),
+
+                                    TryBody = [Expr],
+
+                                    TryClauses = [erl_syntax:clause([ResVar], _ = none, [PrintOk, ResVar])],
+
+                                    CatchClauses = [erl_syntax:clause([ClassVar, ReasonVar, StackVar], _ = none,
+                                                                      [PrintErr, Raise])],
+
+                                    Form = erl_syntax:try_expr(TryBody, TryClauses, CatchClauses, _After = []),
                                     Form
            end,
 
-    Res = process(Forms, _List = extract(Info), Exec, []),
-    ct:print("~nForms: ~p~nRes ~p~n", [Forms, Res]),
-
-    Res.
+    process(Forms, _List = extract(Info), Exec, []).
 
 process(Forms, [], _Exec, Acc) ->
     Res = lists:append(Acc, Forms),
@@ -64,19 +84,24 @@ process([Form0|T], List0, Exec, Acc) ->
 produce(Name, Clauses, Exec) ->
     [ begin Body0 = erl_syntax:clause_body(X),
 
-            Expr0 = lists:last(Body0), IsFailed = is_fail_expr(Expr0),
-
-            if IsFailed ->
+            case Body0 of
+                [] ->
                     X;
-               true ->
-                    Patterns = erl_syntax:clause_patterns(X),
+                _ ->
+                    Expr0 = lists:last(Body0), IsFailed = is_fail_expr(Expr0),
 
-                    Expr1 = Exec(Name, Patterns, Expr0),
+                    if IsFailed ->
+                            X;
+                       true ->
+                            Patterns = erl_syntax:clause_patterns(X),
 
-                    Body1 = lists:droplast(Body0),
-                    Body2 = lists:append(Body1, [Expr1]),
+                            Expr1 = Exec(Name, Patterns, Expr0),
 
-                    erl_syntax:clause(Patterns, _Guard = erl_syntax:clause_guard(X), Body2)
+                            Body1 = lists:droplast(Body0),
+                            Body2 = lists:append(Body1, [Expr1]),
+
+                            erl_syntax:clause(Patterns, _Guard = erl_syntax:clause_guard(X), Body2)
+                    end
             end
 
       end || X <- Clauses
